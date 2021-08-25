@@ -1,11 +1,6 @@
 from django.contrib.auth import authenticate
-from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.db.models.functions import datetime
-from django.shortcuts import render
-
-# Create your views here.
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404
+import logging
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ParseError
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -14,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Employee, Dispatches, POD
 from .serializers import Employeeserializer, DispatchesSerializers
-from django.conf.urls import url
+
 from rest_framework_swagger.views import get_swagger_view
 from django.contrib.auth.models import User
 
@@ -22,8 +17,6 @@ schema_view = get_swagger_view(title='myapp')
 
 
 class RegisterView(APIView):
-
-    # permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         employee = Employee.objects.all()
@@ -48,19 +41,10 @@ class RegisterView(APIView):
             token = Token.objects.get_or_create(user=user)
             return Response({'Response': "user successful created", 'token': token[1]})
         else:
-            # user = authenticate(request.username, request.password)
-
             return Response({'token': 'Token couldnt be created'})
 
 
 class LoginView(APIView):
-    def get(self):
-        """
-
-        :return:
-        """
-        pass
-
     def post(self, request):
         """
 
@@ -97,6 +81,7 @@ class DispatchView(APIView):
 
     def get(self, request):
         """
+        For get requests
 
         :return:
         """
@@ -147,9 +132,6 @@ class DispatchView(APIView):
 class UpdateArrivalView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get(self):
-        pass
-
     def patch(self, request):
         """
 
@@ -158,6 +140,7 @@ class UpdateArrivalView(APIView):
 
         id = request.data['id']
         dispatch = Dispatches.objects.filter(id=id).first()
+
         dispatch.arrival_date = datetime.datetime.now()
         dispatch.save()
         return Response({'Arrival date updated'})
@@ -166,9 +149,6 @@ class UpdateArrivalView(APIView):
 class UpdateDepartureView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get(self):
-        pass
-
     def patch(self, request):
         """
 
@@ -177,10 +157,16 @@ class UpdateDepartureView(APIView):
 
         id = request.data['id']
         dispatch = Dispatches.objects.filter(id=id).first()
-        dispatch.departure_date = datetime.datetime.now()
-        dispatch.status = 'Delivered'
-        dispatch.save()
-        return Response({'Departure date updated'})
+        if dispatch.arrival_date:
+            dispatch.departure_date = datetime.datetime.now()
+            dispatch.status = 'Delivered'
+            dispatch.save()
+            response = {'Departure date updated'}
+        else:
+            response = {
+                'Response': 'You can not update departure date before arrival date. Please first update arrival date'}
+
+        return Response(response)
 
 
 class ShowDispatchDetailView(APIView):
@@ -194,35 +180,30 @@ class ShowDispatchDetailView(APIView):
 
         :return:
         """
-        if request.data['id']:
+        try:
             id = request.data['id']
             dispatch_detail = Dispatches.objects.filter(id=id)
-            serialized_data = DispatchesSerializers(dispatch_detail, many=True).data
-            response = {'Dispatches Details': serialized_data}
+            if dispatch_detail:
+                logging.info("Tsting")
+                serialized_data = DispatchesSerializers(dispatch_detail, many=True).data
+                response = {'Dispatches Details': serialized_data}
+            else:
+                response = {'Response': 'No Dispatches found against this ID'}
 
-        else:
+
+        except:
             dispatches_detail = Dispatches.objects.all()
             if dispatches_detail:
                 serialized_data = DispatchesSerializers(dispatches_detail, many=True).data
-                response = {'Dispatches Details': serialized_data}
+                response = {'All Dispatches': serialized_data}
             else:
                 response = {'Dispatches Details': 'No details found'}
         return Response(response)
-
-    def put(self):
-        pass
-
-    def patch(self):
-        pass
-
-    def delete(self):
-        pass
 
 
 class P_O_D(APIView):
     def post(self, request):
         dispatch_id = request.data['id']
-
 
         dispatch = Dispatches.objects.filter(id=dispatch_id).first()
 

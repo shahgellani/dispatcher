@@ -5,8 +5,6 @@ from .models import Employee, Dispatches
 class Employeeserializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
-        # fields=('first_name' , last_name, age, gender, password, )
-        # fields = '__all__'
 
         fields = '__all__'
 
